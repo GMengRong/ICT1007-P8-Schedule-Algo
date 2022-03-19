@@ -1,0 +1,8 @@
+While loop, each iteration is one second.
+1. Receive all current processes that have arrived. 
+(All processes that are incomplete and arrivaltime < currenttime)
+2. Determine which process to run, based on formula and HRRN.
+3. And increase waiting and turnaround time for all who waited.
+4. Increase turnaround time and decrease remaining burst time for current process.
+5. If process has been completed (remaining burst time 0), register as complete.
+6. Increment time by one
