@@ -120,7 +120,7 @@ int main()
 	float temp;
 
 	// Variable to store next process selected
-	int currentprocess = 0;
+	int currentprocess = -999;
 
 	// Variables for current time and ime quantum
 	int currenttime = 0;
@@ -129,42 +129,118 @@ int main()
 	// To track number of completed processes
 	int completedprocesses = 0;
 
+	//To track total wait time of all ready processes
+	int queueTotalWaitTime = 0;
+
+	//To track number of ready processes in queue
+	int queueCount = 0;
+
+	//To track wt(running proc)/len(waiting procs) + bt(remaining)
+	double currentProcScore = 0;
+
 	// While loop to perform running of all processes.
 	while (completedprocesses < numberOfProcesses)
 	{
-		// To reset response ratio for each iteration.
-		hrr = -9999;
-		// To determine which process to run
-		for (i = 0; i < numberOfProcesses; i++)
-		{
-			// Checking if process has arrived and is Incomplete
-			if (p[i].arrivalTime <= runTime && p[i].completed != 1)
-			{
-				// Calculating Response Ratio
-				temp = (float)(p[i].burstTime + (runTime - p[i].arrivalTime)) / (float)p[i].burstTime;
-
-				// Checking for Highest Response Ratio
-				if (hrr < temp)
-				{
-					// Storing Response Ratio
-					hrr = temp;
-
-					// Storing Location
-					currentprocess = i;
+		//Calc total wait time of all queued processes
+		queueTotalWaitTime = 0;
+		queueCount = 0;
+		for (int y = 0; y < numberOfProcesses; y++){
+			//If waiting, add to queueTotalWaitTime
+			if (p[y].arrivalTime <= runTime && p[y].completed != 1){
+				if (y != currentprocess){
+					queueTotalWaitTime += p[y].waitTime;
+					queueCount++;
 				}
-				else if (hrr == temp)
+			}
+
+		}
+
+		// This is debug code, leaving here in case need to check more shid
+		// printf("Currentprocess: %d\n", currentprocess);
+		// if (currentprocess >= 0){
+		// 	printf("ProcName: %c\n", p[currentprocess].name);
+		// 	printf("WT: %d\n", p[currentprocess].waitTime);
+		// 	printf("QueueCount: %d\n", queueCount);
+		// 	printf("BTLeft: %d\n", p[currentprocess].remainingBurstTime);
+		// }
+
+		//Do the actual check. If fail, process as usual
+		//If succeed and ready proc wt is more, which to swap to?
+		if (queueCount != 0){	//If queue == 0, a prog is running with no queue
+
+		
+			currentProcScore = (p[currentprocess].waitTime / queueCount) + p[currentprocess].remainingBurstTime;
+			if ((queueTotalWaitTime > currentProcScore) || p[currentprocess].completed == 1){
+				//swippity swappity to which one???
+				//This is probably supposed to go outside of the HRR 
+
+		
+				// To reset response ratio for each iteration.
+				hrr = -9999;
+				// To determine which process to run
+				for (i = 0; i < numberOfProcesses; i++)
 				{
-					if (p[currentprocess].burstTime > p[i].burstTime)
+					// Checking if process has arrived and is Incomplete
+					if (p[i].arrivalTime <= runTime && p[i].completed != 1)
 					{
-						currentprocess = i;
+						// Calculating Response Ratio
+						temp = (float)(p[i].burstTime + (runTime - p[i].arrivalTime)) / (float)p[i].burstTime;
+
+						// Checking for Highest Response Ratio
+						if (hrr < temp)
+						{
+							// Storing Response Ratio
+							hrr = temp;
+
+							// Storing Location
+							currentprocess = i;
+						}
+						else if (hrr == temp)
+						{
+							if (p[currentprocess].burstTime > p[i].burstTime)
+							{
+								currentprocess = i;
+							}
+						}
+
+
 					}
 				}
 
-				// Now that HRRN has been decided, check if interrupt is necessary.
-				// if (formula to interrupt = true)
-				// currentprocess = i;
 			}
 		}
+		// else if (currentprocess == -999){		//This is solely here to account for if scheduling just started and only 1 proc is ready, but might not be needed
+		// 	hrr = -9999;
+		// 		// To determine which process to run
+		// 		for (i = 0; i < numberOfProcesses; i++)
+		// 		{
+		// 			// Checking if process has arrived and is Incomplete
+		// 			if (p[i].arrivalTime <= runTime && p[i].completed != 1)
+		// 			{
+		// 				// Calculating Response Ratio
+		// 				temp = (float)(p[i].burstTime + (runTime - p[i].arrivalTime)) / (float)p[i].burstTime;
+
+		// 				// Checking for Highest Response Ratio
+		// 				if (hrr < temp)
+		// 				{
+		// 					// Storing Response Ratio
+		// 					hrr = temp;
+
+		// 					// Storing Location
+		// 					currentprocess = i;
+		// 				}
+		// 				else if (hrr == temp)
+		// 				{
+		// 					if (p[currentprocess].burstTime > p[i].burstTime)
+		// 					{
+		// 						currentprocess = i;
+		// 					}
+		// 				}
+
+
+		// 			}
+		// 		}
+		// }
 
 		// Process to run has been selected. Increase wait time and turnaround time of all ready processes.
 		for (j = 0; j < numberOfProcesses; j++)
