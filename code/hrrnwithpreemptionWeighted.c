@@ -186,7 +186,7 @@ int main()
 					{
 						// Calculating Response Ratio
 						// temp = (float)(p[i].burstTime + (runTime - p[i].arrivalTime)) / (float)p[i].burstTime;
-						temp = (float)(p[i].remainingBurstTime + (runTime - p[i].arrivalTime)) / (float)p[i].remainingBurstTime;
+						temp = (float)(p[i].burstTime + (runTime - p[i].arrivalTime) + 1) / (float)p[i].remainingBurstTime;
 
 						// Checking for Highest Response Ratio
 						if (hrr < temp)
@@ -244,9 +244,6 @@ int main()
 		// 			}
 		// 		}
 		// }
-		
-		//Debug stuff
-		printf("%c", p[currentprocess].name);
 
 		// Process to run has been selected. Increase wait time and turnaround time of all ready processes.
 		for (j = 0; j < numberOfProcesses; j++)
