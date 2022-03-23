@@ -85,8 +85,8 @@ void main()
 
 	//File reading to array here
 	printf("Enter in the input test case file:");
-    char filename[15];
-    scanf("%14s", &filename);
+    char filename[30];
+    scanf("%28s", &filename);
     struct ProcessesData processdata = readFile(filename);
 	n = processdata.processno;
 
