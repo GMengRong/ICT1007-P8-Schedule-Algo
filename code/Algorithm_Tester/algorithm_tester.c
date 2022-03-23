@@ -3,26 +3,52 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Defining process details
-struct process {
-	char name;
-	int at, bt, ct, wt, tt;
-	int completed;
-	float ntt;
-}p[255];
-
-int n;
-
-struct ProcessesData
+struct fileData // Data read from file
 {
     int arrivaltimes[255];
     int bursttimes[255];
     int processno;
 };
 
-struct ProcessesData readFile(char *FileName)
-{
+struct process {
+	int at, bt, ct, wt, tt;
+	int completed;
+	float ntt;
+};
 
+int n; // No of testcases to run
+float *** test_results; // float * 3D array containing all the test results []
+
+void mem_aloc() {
+	test_results = (float ***)malloc(4*sizeof(float*)); // Allocating memory to the X-axis of the array
+		if (test_results == NULL) // Check if the memory was allocated
+		{
+			fprintf(stderr, "Out of memory");
+			exit(0);
+		}
+
+		for(int r = 0; r < 4; r++){		
+			test_results[r] = (float**)malloc(n*sizeof(float*)); // Allocating memory to the rows
+			if (test_results[r] == NULL) // Check if the memory was allocated
+			{
+				fprintf(stderr, "Out of memory");
+				exit(0);
+			}
+
+			for(int c = 0; c < n; c++){
+				test_results[r][c] = (float*)malloc(4*sizeof(float));
+				if (test_results[r][c] == NULL)
+				{
+					fprintf(stderr, "Out of memory");
+					exit(0);
+				}
+			}
+		}
+}
+
+struct fileData readFile(char *FileName)
+{
+	// printf("readfile function filename = %s\n", FileName);// TODELETE
     FILE *testcase;
 
     testcase = fopen(FileName, "r");
@@ -48,7 +74,7 @@ struct ProcessesData readFile(char *FileName)
 
     fclose(testcase);
 
-    struct ProcessesData processdata = {.processno = i};
+    struct fileData processdata = {.processno = i};
     memcpy(processdata.arrivaltimes, arrivaltimes, sizeof arrivaltimes);
     memcpy(processdata.bursttimes, bursttimes, sizeof bursttimes);
 
@@ -56,7 +82,7 @@ struct ProcessesData readFile(char *FileName)
 }
 
 // Sorting Processes by Arrival Time
-void sortByArrival()
+void sortByArrival(struct process p[])
 {
 	struct process temp;
 	int i, j;
@@ -77,60 +103,37 @@ void sortByArrival()
 	}
 }
 
-
-
-void main()
-{
-	int i, j, t, sum_bt = 0;
-	char c;
-	float avgwt = 0, avgtt = 0;
-
-	//File reading to array here
-	printf("Enter in the input test case file:");
-    char filename[15];
-    scanf("%14s", &filename);
-    struct ProcessesData processdata = readFile(filename);
-	n = processdata.processno;
-
-	// Initializing the structure variables
-	for (i = 0, c = 'A'; i < n; i++, c++) {
-		p[i].name = c;
-		p[i].at = processdata.arrivaltimes[i];
-		p[i].bt = processdata.bursttimes[i];
-
-		// Variable for Completion status
-		// Pending = 0
-		// Completed = 1
-		p[i].completed = 0;
-
-		// Variable for sum of all Burst Times
-		sum_bt += p[i].bt;
+// Array to clone the processes for each algorithm
+void cloneArray(struct process original[], struct process cloned[], int size){
+	// Iterate through all the elements in the original array
+	for (int i = 0; i < size; i++){
+		cloned[i] = original[i];
 	}
+}
 
-	// Sorting the structure by arrival times
-	sortByArrival();
+void hrrn(struct process p[], int numberOfProcesses, int sum_bt, int testNo){
+	float avgwt = 0, avgtt = 0; // Average waiting time and average turnaround time
+	struct process p_cloned[8];
+	cloneArray(p, p_cloned, numberOfProcesses);
+	for (int x = 0; x<numberOfProcesses; x++){
+		printf("p_clone[%d].at == %d\n", x, p_cloned[x].at);
+	}
 
 	printf("\nName\tArrival Time\tBurst Time\tWaiting Time");
 	printf("\tTurnAround Time\t Normalized TT");
-	for (t = p[0].at; t < sum_bt;) {
+	for (int t = p_cloned[0].at; t < sum_bt;){
+		float hrr = -9999; // Set lower limit to response ratio
+		float temp; // Response ratio variable
+		int loc; // Variable to store next process selected
 
-		// Set lower limit to response ratio
-		float hrr = -9999;
-
-		// Response Ratio Variable
-		float temp;
-
-		// Variable to store next process selected
-		int loc;
-		for (i = 0; i < n; i++) {
-
+		for(int i = 0; i < numberOfProcesses; i++){
 			// Checking if process has arrived and is Incomplete
-			if (p[i].at <= t && p[i].completed != 1) {
+			if (p_cloned[i].at <= t && p_cloned[i].completed != 1) {
 
 				// Calculating Response Ratio
-				temp = (float)(p[i].bt + (t - p[i].at)) / (float)p[i].bt;
-				//printf("\n%c temp = %d\n", p[i].name, temp);
-				//printf("\n\t%c:%d + (%d - %d)/%d = %f\n", p[i].name, p[i].bt, t, p[i].at, p[i].bt, temp);
+				temp = (float)(p_cloned[i].bt + (t - p_cloned[i].at)) / (float)p_cloned[i].bt;
+				// printf("\n temp = %f\n", temp);
+				// printf("\n\t:%d + (%d - %d)/%d = %f\n",  p_cloned[i].bt, t, p_cloned[i].at, p_cloned[i].bt, temp);
 
 				// Checking for Highest Response Ratio
 				if (hrr < temp) {
@@ -143,7 +146,7 @@ void main()
 					loc = i;
 				}
 				else if(hrr == temp){
-					if (p[loc].bt > p[i].bt){
+					if (p_cloned[loc].bt > p_cloned[i].bt){
 						loc = i;
 					}
 				}
@@ -151,40 +154,111 @@ void main()
 		}
 
 		// Updating time value
-		t += p[loc].bt;
+		t += p_cloned[loc].bt;
 
 		// Calculation of waiting time
-		p[loc].wt = t - p[loc].at - p[loc].bt;
+		p_cloned[loc].wt = t - p_cloned[loc].at - p_cloned[loc].bt;
 
 		// Calculation of Turn Around Time
-		p[loc].tt = t - p[loc].at;
+		p_cloned[loc].tt = t - p_cloned[loc].at;
 
 		// Sum Turn Around Time for average
-		avgtt += p[loc].tt;
+		avgtt += p_cloned[loc].tt;
 
 		// Calculation of Normalized Turn Around Time
-		p[loc].ntt = ((float)p[loc].tt / p[loc].bt);
+		p_cloned[loc].ntt = ((float)p_cloned[loc].tt / p_cloned[loc].bt);
 
 		// Updating Completion Status
-		p[loc].completed = 1;
+		p_cloned[loc].completed = 1;
 
 		// Sum Waiting Time for average
-		avgwt += p[loc].wt;
-		printf("\n%c\t\t%d\t\t", p[loc].name, p[loc].at);
-		printf("%d\t\t%d\t\t", p[loc].bt, p[loc].wt);
-		printf("%d\t\t%f", p[loc].tt, p[loc].ntt);
-
+		avgwt += p_cloned[loc].wt;
+		printf("\n\t\t%d\t\t", p_cloned[loc].at);
+		printf("%d\t\t%d\t\t", p_cloned[loc].bt, p_cloned[loc].wt);
+		printf("%d\t\t%f", p_cloned[loc].tt, p_cloned[loc].ntt);
 	}
 
-    float maxwaitTime = 0.0, maxturnaroundTime = 0.0;
+	// Calculation for max wait time and max turnaround time 
+	float maxwaitTime = 0.0, maxturnaroundTime = 0.0;
     
-    for (j = 0; j < n; j++)
+    for (int j = 0; j < numberOfProcesses; j++)
 	{
-		if (p[j].wt > maxwaitTime){
-			maxwaitTime = p[j].wt;
+		if (p_cloned[j].wt > maxwaitTime){
+			maxwaitTime = p_cloned[j].wt;
 		}
-		if (p[j].tt > maxturnaroundTime) {
-			maxturnaroundTime = p[j].tt;
+		if (p_cloned[j].tt > maxturnaroundTime) {
+			maxturnaroundTime = p_cloned[j].tt;
 		}
 	}
+	avgwt /= numberOfProcesses;
+	avgtt /= numberOfProcesses;
+	// printf("\nbut before that here are the stats: awt = %f, mwt = %f, att = %f, mtt = %f\n", avgwt, maxturnaroundTime, avgtt, maxturnaroundTime);
+	// printf("\ninside hrrn testcase results: %f,%f,%f,%f\n", testcase_results[0],testcase_results[1],testcase_results[2],testcase_results[3]);
+	// Population of the test_results 3d array
+	test_results[0][testNo-1][0] = avgwt;
+	test_results[0][testNo-1][1] = maxwaitTime;
+	test_results[0][testNo-1][2] = avgtt;
+	test_results[0][testNo-1][3] = maxturnaroundTime;
+}
+
+void loop(int n) {
+
+	mem_aloc(); // allocate memory for the testcases
+	// printf("sizeof test reults [0][0] is %d, sizeof int* is %d" ,sizeof(test_results[0][0]), sizeof(int*)); // TODELETE
+	for(int testNo = 1; testNo<n+1; testNo++) {
+		struct process p[8]; // Initialise the struct array containing all the processes
+
+		int sum_bt = 0;
+		char filename[28]; // Initialise filename to be read;
+		sprintf(filename,"./testcases/testcase%d.txt", testNo); // Format the file name and save value to the filename variable
+		// printf("filename = %s\n",filename); // TODELETE
+		struct fileData file_data = readFile(filename); // Reading testcase file to get the file data
+		int no_of_processes = file_data.processno;
+
+		// Initializing the structure variables
+		for (int i = 0; i < no_of_processes; i++) {
+			p[i].at = file_data.arrivaltimes[i];
+			p[i].bt = file_data.bursttimes[i];
+
+			// Variable for Completion status
+			// Pending = 0
+			// Completed = 1
+			p[i].completed = 0;
+
+			// Variable for sum of all Burst Times
+			sum_bt += p[i].bt;
+		}
+
+		sortByArrival(p);
+		
+		hrrn(p, no_of_processes, sum_bt, testNo);
+		printf("hrrn test results = %f,%f,%f,%f", test_results[0][testNo-1][0],test_results[0][testNo-1][1],test_results[0][testNo-1][2],test_results[0][testNo-1][3]);
+		// for(int k = 0; k < no_of_processes; k++){
+			
+		// 	printf("Process, at = %d, bt = %d, wt = %d, tt=%d, ntt=%f\n",p[k].at,p[k].bt,p[k].wt,p[k].tt,p[k].ntt);
+		// }
+		
+	}
+	// test_results;
+}
+
+void main() {
+	printf("How many testcases to run? (Please create testcases first) ");
+	scanf("%d",&n);
+	loop(n);
+	// test_results[0][0] = 4;
+	// test_results[0][1] = 3;
+	// test_results[0][2] = 2;
+	// test_results[0][3] = 1;
+	// test_results[1][0] = 8;
+	// test_results[1][1] = 7;
+	// test_results[1][2] = 6;
+	// test_results[1][3] = 5;
+
+	// for(int r = 0; r < n; r++){
+	// 	for(int c = 0; c < 4; c++){
+	// 		printf("row %d , column %d == %d\n", r,c,test_results[r][c]);
+	// 	}
+	// }
+	// loop(100);
 }
