@@ -8,7 +8,7 @@ float* hrrnwithpreemption (struct process p[], int numberOfProcesses) {
 	
 	bool interrupt;
 	
-	float avgwaitTime = 0, avgturnaroundTime = 0, maxwaitTime = 0, maxturnaroundTime = 0;
+	float avgwaitTime = 0, avgturnaroundTime = 0, maxwaitTime = 0, maxturnaroundTime = 0. timedelay = 0;
 
 	// Variable to store next process selected and previous process in the event of interrupt
 	int currentprocess = 0, previousprocess = 0, runTime = 0;
@@ -53,10 +53,12 @@ float* hrrnwithpreemption (struct process p[], int numberOfProcesses) {
 		if (queueCount != 0)
 		{ // If queue == 0, a prog is running with no queue
 
-			if (queueTotalWaitTime > p[currentprocess].remainingBurstTime && p[currentprocess].completed != 1)
+			if (queueTotalWaitTime > p[currentprocess].remainingBurstTime && p[currentprocess].completed != 1 && timedelay < 1 && queueCount > 1)
 			{
 				previousprocess = currentprocess;
 				interrupt = true;
+				// If interrupt, set a delay for the program.
+				timedelay = queueTotalWaitTime;
 			}
 
 			// To reset response ratio for each iteration.
@@ -127,6 +129,7 @@ float* hrrnwithpreemption (struct process p[], int numberOfProcesses) {
 		}
 		// Increase the runtime by 1
 		interrupt = false;
+		timedelay--;
 		runTime++;
 	}
 
