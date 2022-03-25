@@ -5,6 +5,8 @@
 #include <stdbool.h>
 
 #define processesInFile 8 // Number of processes in each test case
+int ALGOCOUNT = 4;
+int TESTCOUNT = 10;
 
 struct fileData // Data read from file
 {
@@ -25,6 +27,35 @@ float *** test_results; // float * 3D array containing all the test results
 // test_results[algorithm][test number][Matrix]
 // algorithm 0 = HRRN, 1 = HRRN+1, 2 = HRRN with Preemption, 3 = HRRN + 1 with preemption
 // matrix 0 = Average wait time, 1 = max wait time, 2 = average turnaround time, 3 = max turnaround time
+
+// void writeToCsv(float pointerscansuckmydick[ALGOCOUNT][TESTCOUNT][4]){
+void writeToCsv(float *** pointerscansuckmydick, int testcount){
+    FILE *fptr;
+    fptr = fopen("hrrnresults.csv", "w");
+
+    if(fptr == NULL){
+        printf("Shit broke im sorry\n");
+        exit(1);
+    }
+
+    fprintf(fptr, "Testcase Number, HRRN,,,, HRRN+1,,,, HRRN Preempt,,,, HRRM Preempt+1,,,\n");
+    fprintf(fptr,", AWT, MWT, ATT, MTT, AWT, MWT, ATT, MTT, AWT, MWT, ATT, MTT, AWT, MWT, ATT, MTT\n");
+
+    for (int n = 0; n < testcount; n++){
+        fprintf(fptr, "%d,",n+1);
+        for (int i = 0; i < ALGOCOUNT; i++){
+            fprintf(fptr,"%f,",pointerscansuckmydick[i][n][0]);
+            fprintf(fptr,"%f,",pointerscansuckmydick[i][n][1]);
+            fprintf(fptr,"%f,",pointerscansuckmydick[i][n][2]);
+            fprintf(fptr,"%f,",pointerscansuckmydick[i][n][3]);
+        }
+        fprintf(fptr,"\n");
+    }
+    
+    fclose(fptr);
+    printf("Done\n");
+    
+}
 
 void mem_aloc() {
 	test_results = (float ***)malloc(4*sizeof(float*)); // Allocating memory to the X-axis of the array
@@ -449,4 +480,5 @@ void main() {
 	// 	}
 	// }
 	// loop(100);
+	writeToCsv(test_results,n);
 }
