@@ -2,22 +2,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+
+#define processesInFile 8 // Number of processes in each test case
 
 struct fileData // Data read from file
 {
-    int arrivaltimes[255];
-    int bursttimes[255];
-    int processno;
+    int arrivaltimes[255]; // Array containing all the arrival times in the file
+    int bursttimes[255]; // Array containing all the burst times in the file
+    int processno; // Number of processes in the file
 };
 
-struct process {
-	int at, bt, ct, wt, tt;
-	int completed;
-	float ntt;
+struct process // Process 
+{
+	int at, bt, rbt, wt, tt; // arrival time, burst time, remaining burst time, wait time, turnaround time
+	int completed; // Int value to indicate if the process is completed or not 
+	float ntt; // Normalised turnaround time 
 };
 
 int n; // No of testcases to run
-float *** test_results; // float * 3D array containing all the test results []
+float *** test_results; // float * 3D array containing all the test results
+// test_results[algorithm][test number][Matrix]
+// algorithm 0 = HRRN, 1 = HRRN+1, 2 = HRRN with Preemption, 3 = HRRN + 1 with preemption
+// matrix 0 = Average wait time, 1 = max wait time, 2 = average turnaround time, 3 = max turnaround time
 
 void mem_aloc() {
 	test_results = (float ***)malloc(4*sizeof(float*)); // Allocating memory to the X-axis of the array
@@ -37,7 +44,7 @@ void mem_aloc() {
 
 			for(int c = 0; c < n; c++){
 				test_results[r][c] = (float*)malloc(4*sizeof(float));
-				if (test_results[r][c] == NULL)
+				if (test_results[r][c] == NULL) // Check if the memory was allocated
 				{
 					fprintf(stderr, "Out of memory");
 					exit(0);
@@ -111,13 +118,18 @@ void cloneArray(struct process original[], struct process cloned[], int size){
 	}
 }
 
-void hrrn(struct process p[], int numberOfProcesses, int sum_bt, int testNo){
-	float avgwt = 0, avgtt = 0; // Average waiting time and average turnaround time
-	struct process p_cloned[8];
-	cloneArray(p, p_cloned, numberOfProcesses);
-	for (int x = 0; x<numberOfProcesses; x++){
-		printf("p_clone[%d].at == %d\n", x, p_cloned[x].at);
+// HRRN process scheduling algorithm
+void hrrn(struct process p[], int numberOfProcesses, int sum_bt, int testNo, int plusOne){
+	if (plusOne){
+		printf("\nIn HRRN + 1 scheduler\n");
+	} 
+	else {
+		printf("\nIn HRRN scheduler\n");
 	}
+	
+	float avgwt = 0, avgtt = 0; // Average waiting time and average turnaround time
+	struct process p_cloned[processesInFile];
+	cloneArray(p, p_cloned, numberOfProcesses);
 
 	printf("\nName\tArrival Time\tBurst Time\tWaiting Time");
 	printf("\tTurnAround Time\t Normalized TT");
@@ -131,7 +143,7 @@ void hrrn(struct process p[], int numberOfProcesses, int sum_bt, int testNo){
 			if (p_cloned[i].at <= t && p_cloned[i].completed != 1) {
 
 				// Calculating Response Ratio
-				temp = (float)(p_cloned[i].bt + (t - p_cloned[i].at)) / (float)p_cloned[i].bt;
+				temp = (float)(p_cloned[i].bt + (t - p_cloned[i].at) + plusOne) / (float)p_cloned[i].bt;
 				// printf("\n temp = %f\n", temp);
 				// printf("\n\t:%d + (%d - %d)/%d = %f\n",  p_cloned[i].bt, t, p_cloned[i].at, p_cloned[i].bt, temp);
 
@@ -195,10 +207,177 @@ void hrrn(struct process p[], int numberOfProcesses, int sum_bt, int testNo){
 	// printf("\nbut before that here are the stats: awt = %f, mwt = %f, att = %f, mtt = %f\n", avgwt, maxturnaroundTime, avgtt, maxturnaroundTime);
 	// printf("\ninside hrrn testcase results: %f,%f,%f,%f\n", testcase_results[0],testcase_results[1],testcase_results[2],testcase_results[3]);
 	// Population of the test_results 3d array
-	test_results[0][testNo-1][0] = avgwt;
-	test_results[0][testNo-1][1] = maxwaitTime;
-	test_results[0][testNo-1][2] = avgtt;
-	test_results[0][testNo-1][3] = maxturnaroundTime;
+	test_results[0+plusOne][testNo-1][0] = avgwt;
+	test_results[0+plusOne][testNo-1][1] = maxwaitTime;
+	test_results[0+plusOne][testNo-1][2] = avgtt;
+	test_results[0+plusOne][testNo-1][3] = maxturnaroundTime;
+}
+
+// HRRN with preemption process scheduling algorithm
+void hrrnwithpreemption (struct process p[], int numberOfProcesses, int sum_bt, int testNo, int plusOne) {
+	if (plusOne){
+		printf("\nIn HRRN + 1 with preemption scheduler\n");
+	} 
+	else {
+		printf("\nIn HRRN with preemption scheduler\n");
+	}
+	struct process p_cloned[processesInFile];
+	cloneArray(p, p_cloned, numberOfProcesses);
+	// for (int x = 0; x<numberOfProcesses; x++){
+	// 	printf("p_clone[%d].at == %d\n", x, p_cloned[x].at);
+	// }
+
+	// Set lower limit to response ratio
+	float hrr = -9999;
+
+	// Response Ratio Variable
+	float temp;
+	
+	bool interrupt;
+	
+	float avgwaitTime = 0, avgturnaroundTime = 0, maxwaitTime = 0, maxturnaroundTime = 0, timedelay = 0;
+
+	// Variable to store next process selected and previous process in the event of interrupt
+	int currentprocess = 0, previousprocess = 0, runTime = 0;
+
+	// Variables for current time and ime quantum
+	int currenttime = 0;
+	int quantum = 0;
+
+	// To track number of completed processes
+	int completedprocesses = 0;
+
+	// To track total wait time of all ready processes
+	int queueTotalWaitTime = 0;
+
+	// To track number of ready processes in queue
+	int queueCount = 0;
+
+	// To track wt(running proc)/len(waiting procs) + bt(remaining)
+	double currentProcScore = 0;
+
+	// While loop to perform running of all processes.
+	while (completedprocesses < numberOfProcesses)
+	{
+		// Calc total wait time of all queued processes
+		queueTotalWaitTime = 0;
+		queueCount = 0;
+		runTime++;
+		for (int i = 0; i < numberOfProcesses; i++)
+		{
+			// If waiting, add to queueTotalWaitTime
+			if (p_cloned[i].at <= runTime && p_cloned[i].completed != 1)
+			{
+				if (i != currentprocess)
+				{
+					queueTotalWaitTime += p_cloned[i].wt+1;
+					queueCount++;
+				}
+			}
+		}
+		queueTotalWaitTime--;
+		runTime--;
+		if (queueCount != 0)
+		{ // If queue == 0, a prog is running with no queue
+
+			if (queueTotalWaitTime > p_cloned[currentprocess].rbt && p_cloned[currentprocess].completed != 1 && timedelay < 1 && queueCount > 1)
+			{
+				previousprocess = currentprocess;
+				interrupt = true;
+				// If interrupt, set a delay for the program.
+				timedelay = queueTotalWaitTime;
+			}
+
+			// To reset response ratio for each iteration.
+			hrr = -9999;
+			int i = 0;
+			// To determine which process to run (HRRN)
+			if (interrupt || p_cloned[currentprocess].completed == 1)
+			{
+				for (i = 0; i < numberOfProcesses; i++)
+				{
+					// To skip the previous process if interrupt was triggered.
+					if (interrupt && i == previousprocess)
+					{
+						i++;
+					}
+
+					// Checking if process has arrived and is Incomplete
+					if (p_cloned[i].at <= runTime && p_cloned[i].completed != 1)
+					{
+						// Calculating Response Ratio
+						// temp = (float)(p_cloned[i].burstTime + (runTime - p_cloned[i].arrivalTime)) / (float)p_cloned[i].burstTime;
+						temp = (float)(p_cloned[i].rbt + (runTime - p_cloned[i].at) + plusOne) / (float)p_cloned[i].rbt;
+
+						// Checking for Highest Response Ratio
+						if (hrr < temp)
+						{
+							// Storing Response Ratio
+							hrr = temp;
+
+							// Storing Location
+							currentprocess = i;
+						}
+						else if (hrr == temp)
+						{
+							// if (p_cloned[currentprocess].burstTime > p_cloned[i].burstTime)
+							if (p_cloned[currentprocess].bt > p_cloned[i].rbt)
+							{
+								currentprocess = i;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Process to run has been selected. Increase wait time and turnaround time of all ready processes.
+		for (int i = 0; i < numberOfProcesses; i++)
+		{
+			if (p_cloned[i].at <= runTime && p_cloned[i].completed != 1)
+			{
+				// Check if its not the current process
+				if (i != currentprocess)
+				{
+					p_cloned[i].wt++;
+					p_cloned[i].tt++;
+				}
+			}
+		}
+		// To decrement the remaining burst time of current process and increase turnaround time.
+		p_cloned[currentprocess].rbt--;
+		p_cloned[currentprocess].tt++;
+
+		// If process has 0 remaining burst time, count as completed.
+		if (p_cloned[currentprocess].rbt == 0)
+		{
+			p_cloned[currentprocess].completed = 1;
+			completedprocesses++;
+		}
+		// Increase the runtime by 1
+		interrupt = false;
+		timedelay--;
+		runTime++;
+	}
+
+	for (int j = 0; j < numberOfProcesses; j++)
+	{
+		avgwaitTime += p_cloned[j].wt;
+		avgturnaroundTime += p_cloned[j].tt;
+		if (p_cloned[j].wt > maxwaitTime)
+		{
+			maxwaitTime = p_cloned[j].wt;
+		}
+		if (p_cloned[j].tt > maxturnaroundTime)
+		{
+			maxturnaroundTime = p_cloned[j].tt;
+		}
+	}
+	
+	test_results[2+plusOne][testNo-1][0]  = avgwaitTime / numberOfProcesses;
+	test_results[2+plusOne][testNo-1][1] = maxwaitTime;
+	test_results[2+plusOne][testNo-1][2] = avgturnaroundTime / numberOfProcesses;
+	test_results[2+plusOne][testNo-1][3] = maxturnaroundTime;
 }
 
 void loop(int n) {
@@ -206,15 +385,15 @@ void loop(int n) {
 	mem_aloc(); // allocate memory for the testcases
 	// printf("sizeof test reults [0][0] is %d, sizeof int* is %d" ,sizeof(test_results[0][0]), sizeof(int*)); // TODELETE
 	for(int testNo = 1; testNo<n+1; testNo++) {
-		struct process p[8]; // Initialise the struct array containing all the processes
+		struct process p[processesInFile]; // Initialise the struct array containing all the processes
 
 		int sum_bt = 0;
-		char filename[28]; // Initialise filename to be read;
+		char filename[45]; // Initialise filename to be read;
 		sprintf(filename,"./testcases/testcase%d.txt", testNo); // Format the file name and save value to the filename variable
 		// printf("filename = %s\n",filename); // TODELETE
 		struct fileData file_data = readFile(filename); // Reading testcase file to get the file data
 		int no_of_processes = file_data.processno;
-
+		printf("no_of_processes = %d\n", no_of_processes);
 		// Initializing the structure variables
 		for (int i = 0; i < no_of_processes; i++) {
 			p[i].at = file_data.arrivaltimes[i];
@@ -231,8 +410,17 @@ void loop(int n) {
 
 		sortByArrival(p);
 		
-		hrrn(p, no_of_processes, sum_bt, testNo);
-		printf("hrrn test results = %f,%f,%f,%f", test_results[0][testNo-1][0],test_results[0][testNo-1][1],test_results[0][testNo-1][2],test_results[0][testNo-1][3]);
+		hrrn(p, no_of_processes, sum_bt, testNo, 0);
+		hrrn(p, no_of_processes, sum_bt, testNo, 1);
+		hrrnwithpreemption(p, no_of_processes, sum_bt, testNo, 0);
+		hrrnwithpreemption(p, no_of_processes, sum_bt, testNo, 1);
+
+		printf("\nhrrn test results = %f,%f,%f,%f", test_results[0][testNo-1][0],test_results[0][testNo-1][1],test_results[0][testNo-1][2],test_results[0][testNo-1][3]);
+		printf("\nhrrn+1 test results = %f,%f,%f,%f", test_results[1][testNo-1][0],test_results[1][testNo-1][1],test_results[1][testNo-1][2],test_results[1][testNo-1][3]);
+		printf("\nhrrn with Preemption test results = %f,%f,%f,%f", test_results[2][testNo-1][0],test_results[2][testNo-1][1],test_results[2][testNo-1][2],test_results[2][testNo-1][3]);
+		printf("\nhrrn+1 with Preemption test results = %f,%f,%f,%f", test_results[3][testNo-1][0],test_results[3][testNo-1][1],test_results[3][testNo-1][2],test_results[3][testNo-1][3]);
+
+
 		// for(int k = 0; k < no_of_processes; k++){
 			
 		// 	printf("Process, at = %d, bt = %d, wt = %d, tt=%d, ntt=%f\n",p[k].at,p[k].bt,p[k].wt,p[k].tt,p[k].ntt);
