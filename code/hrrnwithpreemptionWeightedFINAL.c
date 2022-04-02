@@ -198,7 +198,12 @@ int main()
 			{
 				for (i = 0; i < numberOfProcesses; i++)
 				{
-					
+					// To skip the previous process if interrupt was triggered.
+					if (interrupt && i == previousprocess)
+					{
+						i++;
+						continue;
+					}
 
 					// Checking if process has arrived and is Incomplete
 					if (p[i].arrivalTime <= runTime && p[i].completed != 1)
