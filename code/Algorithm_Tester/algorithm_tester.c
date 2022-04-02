@@ -29,12 +29,12 @@ float *** test_results; // float * 3D array containing all the test results
 // matrix 0 = Average wait time, 1 = max wait time, 2 = average turnaround time, 3 = max turnaround time
 
 // void writeToCsv(float pointerscansuckmydick[ALGOCOUNT][TESTCOUNT][4]){
-void writeToCsv(float *** pointerscansuckmydick, int testcount){
+void writeToCsv(float *** test_results, int testcount){
     FILE *fptr;
     fptr = fopen("hrrnresults.csv", "w");
 
     if(fptr == NULL){
-        printf("Shit broke im sorry\n");
+        printf("Could not open file, please check the filename.\n");
         exit(1);
     }
 
@@ -44,17 +44,15 @@ void writeToCsv(float *** pointerscansuckmydick, int testcount){
     for (int i = 0; i < testcount; i++){
         fprintf(fptr, "%d,",i+1);
         for (int j = 0; j < ALGOCOUNT; j++){
-            fprintf(fptr,"%f,",pointerscansuckmydick[j][i][0]);
-            fprintf(fptr,"%f,",pointerscansuckmydick[j][i][1]);
-            fprintf(fptr,"%f,",pointerscansuckmydick[j][i][2]);
-            fprintf(fptr,"%f,",pointerscansuckmydick[j][i][3]);
+            fprintf(fptr,"%f,",test_results[j][i][0]);
+            fprintf(fptr,"%f,",test_results[j][i][1]);
+            fprintf(fptr,"%f,",test_results[j][i][2]);
+            fprintf(fptr,"%f,",test_results[j][i][3]);
         }
         fprintf(fptr,"\n");
     }
     
     fclose(fptr);
-    printf("Done\n");
-    
 }
 
 void mem_aloc() {
@@ -86,7 +84,6 @@ void mem_aloc() {
 
 struct fileData readFile(char *FileName)
 {
-	printf("readfile function filename = %s\n", FileName);// TODELETE
     FILE *testcase;
 
     testcase = fopen(FileName, "r");
@@ -104,7 +101,6 @@ struct fileData readFile(char *FileName)
 
     while (fscanf(testcase, "%d %d", &arrivaltimes[i], &bursttimes[i]) != EOF)
     {
-		printf("item%d arrival time of %d, bursttime of %d\n", i, arrivaltimes[i], bursttimes[i]);
         i++;
     }
 
@@ -163,14 +159,6 @@ void hrrn(struct process p[], int numberOfProcesses, int sum_bt, int testNo, int
 	struct process p_cloned[processesInFile];
 	cloneArray(p, p_cloned, numberOfProcesses);
 
-	for (int x = 0; x<numberOfProcesses; x++){
-		printf("p_clone[%d].at == %d\n", x, p_cloned[x].at);
-		printf("p_clone[%d].bt == %d\n", x, p_cloned[x].bt);
-		printf("p_clone[%d].wt == %d\n", x, p_cloned[x].wt);
-	}
-
-	// printf("\nName\tArrival Time\tBurst Time\tWaiting Time");
-	// printf("\tTurnAround Time\t Normalized TT");
 	for (int t = p_cloned[0].at; t < sum_bt;){
 		float hrr = -9999; // Set lower limit to response ratio
 		float temp; // Response ratio variable
@@ -182,15 +170,12 @@ void hrrn(struct process p[], int numberOfProcesses, int sum_bt, int testNo, int
 
 				// Calculating Response Ratio
 				temp = (float)(p_cloned[i].bt + (t - p_cloned[i].at) + plusOne) / (float)p_cloned[i].bt;
-				// printf("\n temp = %f\n", temp);
-				// printf("\n\t:%d + (%d - %d)/%d = %f\n",  p_cloned[i].bt, t, p_cloned[i].at, p_cloned[i].bt, temp);
 
 				// Checking for Highest Response Ratio
 				if (hrr < temp) {
 
 					// Storing Response Ratio
 					hrr = temp;
-					// printf("%f", hrr);
 
 					// Storing Location
 					loc = i;
@@ -223,9 +208,6 @@ void hrrn(struct process p[], int numberOfProcesses, int sum_bt, int testNo, int
 
 		// Sum Waiting Time for average
 		avgwt += p_cloned[loc].wt;
-		// printf("\n\t\t%d\t\t", p_cloned[loc].at);
-		// printf("%d\t\t%d\t\t", p_cloned[loc].bt, p_cloned[loc].wt);
-		// printf("%d\t\t%f", p_cloned[loc].tt, p_cloned[loc].ntt);
 	}
 
 	// Calculation for max wait time and max turnaround time 
@@ -242,8 +224,7 @@ void hrrn(struct process p[], int numberOfProcesses, int sum_bt, int testNo, int
 	}
 	avgwt /= numberOfProcesses;
 	avgtt /= numberOfProcesses;
-	// printf("\nbut before that here are the stats: awt = %f, mwt = %f, att = %f, mtt = %f\n", avgwt, maxturnaroundTime, avgtt, maxturnaroundTime);
-	// printf("\ninside hrrn testcase results: %f,%f,%f,%f\n", testcase_results[0],testcase_results[1],testcase_results[2],testcase_results[3]);
+
 	// Population of the test_results 3d array
 	test_results[0+plusOne][testNo-1][0] = avgwt;	
 	test_results[0+plusOne][testNo-1][1] = maxwaitTime;
@@ -261,11 +242,6 @@ void hrrnwithpreemption (struct process p[], int numberOfProcesses, int sum_bt, 
 	}
 	struct process p_cloned[processesInFile];
 	cloneArray(p, p_cloned, numberOfProcesses);
-	for (int x = 0; x<numberOfProcesses; x++){
-		printf("p_clone[%d].at == %d\n", x, p_cloned[x].at);
-		printf("p_clone[%d].bt == %d\n", x, p_cloned[x].bt);
-		printf("p_clone[%d].wt == %d\n", x, p_cloned[x].wt);
-	}
 	
 	// Set lower limit to response ratio
 	float hrr = -9999;
@@ -319,14 +295,6 @@ void hrrnwithpreemption (struct process p[], int numberOfProcesses, int sum_bt, 
 		queueTotalWaitTime--;
 		runTime--;
 
-		// This is debug code, leaving here in case need to check more shid
-		// printf("Currentprocess: %d\n", currentprocess);
-		// if (currentprocess >= 0){
-		// 	printf("WT: %d\n", p_cloned[currentprocess].wt);
-		// 	printf("QueueCount: %d\n", queueCount);
-		// 	printf("BTLeft: %d\n", p_cloned[currentprocess].rbt);
-		// }
-
 		// Do the actual check. If fail, process as usual
 		// If succeed and ready proc wt is more, which to swap to?
 		if (queueCount != 0)
@@ -335,16 +303,10 @@ void hrrnwithpreemption (struct process p[], int numberOfProcesses, int sum_bt, 
 			if (queueTotalWaitTime > p_cloned[currentprocess].rbt && p_cloned[currentprocess].completed != 1 && timedelay < 1 && queueCount > 1)
 			{
 				previousprocess = currentprocess;
-				//printf("%d : %d\n", queueTotalWaitTime,p_cloned[currentprocess].remainingBurstTime);
 				interrupt = true;
 				// If interrupt, set a delay for the program.
 				timedelay = queueTotalWaitTime;
 			}
-
-			// currentProcScore = (p_cloned[currentprocess].waitTime / queueCount) + p_cloned[currentprocess].remainingBurstTime;
-			// if ((queueTotalWaitTime > currentProcScore) || p_cloned[currentprocess].completed == 1){
-			// swippity swappity to which one???
-			// This is probably supposed to go outside of the HRR
 
 			// To reset response ratio for each iteration.
 			hrr = -9999;
@@ -357,6 +319,7 @@ void hrrnwithpreemption (struct process p[], int numberOfProcesses, int sum_bt, 
 					if (interrupt && i == previousprocess)
 					{
 						i++;
+						continue;
 					}
 
 					// Checking if process has arrived and is Incomplete
@@ -389,7 +352,6 @@ void hrrnwithpreemption (struct process p[], int numberOfProcesses, int sum_bt, 
 		}
 
 		// Process to run has been selected. Increase wait time and turnaround time of all ready processes.
-		// printf("%c",p_cloned[currentprocess].name);
 		for (int j = 0; j < numberOfProcesses; j++)
 		{
 			if (p_cloned[j].at <= runTime && p_cloned[j].completed != 1)
@@ -418,17 +380,10 @@ void hrrnwithpreemption (struct process p[], int numberOfProcesses, int sum_bt, 
 		runTime++;
 	}
 
-	// Print statement logic
-	// printf("\nName\tArrival Time\tBurst Time\tWaiting Time");
-	// printf("\tTurnAround Time");
-
 	for (int j = 0; j < numberOfProcesses; j++)
 	{
 		avgwaitTime += p_cloned[j].wt;
 		avgturnaroundTime += p_cloned[j].tt;
-		// printf("\n\t\t%d\t\t", p_cloned[j].at);
-		// printf("%d\t\t%d\t\t", p_cloned[j].bt, p_cloned[j].wt);
-		// printf("%d", p_cloned[j].tt);
 		if (p_cloned[j].wt > maxwaitTime)
 		{
 			maxwaitTime = p_cloned[j].wt;
@@ -438,12 +393,6 @@ void hrrnwithpreemption (struct process p[], int numberOfProcesses, int sum_bt, 
 			maxturnaroundTime = p_cloned[j].tt;
 		}
 	}
-
-	// printf("\nAverage waiting time:%f\n", avgwaitTime / numberOfProcesses);
-	// printf("Maximum waiting time:%f\n", maxwaitTime);
-	// printf("Average Turn Around time:%f\n", avgturnaroundTime / numberOfProcesses);
-	// printf("Maximum Turn Around time:%f\n", maxturnaroundTime);
-	printf("saving results\n");
 	
 	test_results[2+plusOne][testNo-1][0] = avgwaitTime / numberOfProcesses;
 	test_results[2+plusOne][testNo-1][1] = maxwaitTime;
@@ -452,17 +401,14 @@ void hrrnwithpreemption (struct process p[], int numberOfProcesses, int sum_bt, 
 }
 
 void loop(int n) {
-	// printf("sizeof test reults [0][0] is %d, sizeof int* is %d" ,sizeof(test_results[0][0]), sizeof(int*)); // TODELETE
 	for(int testNo = 1; testNo<n+1; testNo++) {
 		struct process p[processesInFile]; // Initialise the struct array containing all the processes
 
 		int sum_bt = 0;
 		char filename[45]; // Initialise filename to be read;
 		sprintf(filename,"./testcases/testcase%d.txt", testNo); // Format the file name and save value to the filename variable
-		// printf("filename = %s\n",filename); // TODELETE
 		struct fileData file_data = readFile(filename); // Reading testcase file to get the file data
 		int no_of_processes = file_data.processno;
-		// printf("no_of_processes = %d\n", no_of_processes);
 		// Initializing the structure variables
 		for (int i = 0; i < no_of_processes; i++) {
 			p[i].at = file_data.arrivaltimes[i];
@@ -480,19 +426,7 @@ void loop(int n) {
 			sum_bt += p[i].bt;
 		}
 
-		for (int x = 0; x<no_of_processes; x++){
-			printf("official p[%d].at == %d\n", x, p[x].at);
-			printf("official p[%d].bt == %d\n", x, p[x].bt);
-			printf("official p[%d].wt == %d\n", x, p[x].wt);
-		}
-
 		sortByArrival(p, no_of_processes);
-		
-		for (int x = 0; x<no_of_processes; x++){
-			printf("official p[%d].at == %d\n", x, p[x].at);
-			printf("official p[%d].bt == %d\n", x, p[x].bt);
-			printf("official p[%d].wt == %d\n", x, p[x].wt);
-		}
 
 		hrrn(p, no_of_processes, sum_bt, testNo, 0);
 		hrrn(p, no_of_processes, sum_bt, testNo, 1);
@@ -504,13 +438,6 @@ void loop(int n) {
 		printf("\nhrrn+1 test results = %f,%f,%f,%f", test_results[1][testNo-1][0],test_results[1][testNo-1][1],test_results[1][testNo-1][2],test_results[1][testNo-1][3]);
 		printf("\nhrrn with Preemption test results = %f,%f,%f,%f", test_results[2][testNo-1][0],test_results[2][testNo-1][1],test_results[2][testNo-1][2],test_results[2][testNo-1][3]);
 		printf("\nhrrn+1 with Preemption test results = %f,%f,%f,%f\n", test_results[3][testNo-1][0],test_results[3][testNo-1][1],test_results[3][testNo-1][2],test_results[3][testNo-1][3]);
-
-
-		// for(int k = 0; k < no_of_processes; k++){
-			
-		// 	printf("Process, at = %d, bt = %d, wt = %d, tt=%d, ntt=%f\n",p[k].at,p[k].bt,p[k].wt,p[k].tt,p[k].ntt);
-		// }
-		
 	}
 	// test_results;
 }
@@ -520,20 +447,5 @@ void main() {
 	scanf("%d",&n);
 	mem_aloc(); // allocate memory for the testcases
 	loop(n);
-	// test_results[0][0] = 4;
-	// test_results[0][1] = 3;
-	// test_results[0][2] = 2;
-	// test_results[0][3] = 1;
-	// test_results[1][0] = 8;
-	// test_results[1][1] = 7;
-	// test_results[1][2] = 6;
-	// test_results[1][3] = 5;
-
-	// for(int r = 0; r < n; r++){
-	// 	for(int c = 0; c < 4; c++){
-	// 		printf("row %d , column %d == %d\n", r,c,test_results[r][c]);
-	// 	}
-	// }
-	// loop(100);
 	writeToCsv(test_results,n);
 }
