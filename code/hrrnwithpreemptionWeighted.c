@@ -4,10 +4,10 @@
 #include <string.h>
 #include <stdbool.h>
 
-// Struct which will contain all process data. The processes will be stored into an array "p".
+// Defining process details
 struct process
 {
-	int pid;
+	char name;
 	int arrivalTime, burstTime, remainingBurstTime, waitTime, turnaroundTime;
 	int completed;
 } p[255];
@@ -37,7 +37,6 @@ void sortByArrival(int numberOfProcess)
 	}
 }
 
-// The struct for the filereader function, which contains two arrays for the burst and arrival times.
 struct ProcessesData
 {
 	int arrivaltimes[255];
@@ -45,7 +44,6 @@ struct ProcessesData
 	int processno;
 };
 
-// File reader function to store all data into a list of arrival times and burst times.
 struct ProcessesData readFile(char *FileName)
 {
 
@@ -81,169 +79,11 @@ struct ProcessesData readFile(char *FileName)
 	return processdata;
 }
 
-float* hrrnwithpreemption (struct process p[], int numberOfProcesses) {
-	static float resultarray[4];
-	// Set lower limit to response ratio
-	float hrr = -9999;
-
-	// Response Ratio Variable
-	float temp;
-	
-	bool interrupt;
-	
-	float avgwaitTime = 0, avgturnaroundTime = 0, maxwaitTime = 0, maxturnaroundTime = 0, timedelay = 0;
-
-	// Variable to store next process selected and previous process in the event of interrupt
-	int currentprocess = 0, previousprocess = 0, runTime = 0;
-
-	// Variables for current time and ime quantum
-	int currenttime = 0;
-	int quantum = 0;
-
-	// To track number of completed processes
-	int completedprocesses = 0;
-
-	// To track total wait time of all ready processes
-	int queueTotalWaitTime = 0;
-
-	// To track number of ready processes in queue
-	int queueCount = 0;
-
-	// To track wt(running proc)/len(waiting procs) + bt(remaining)
-	double currentProcScore = 0;
-
-	// While loop to perform running of all processes.
-	while (completedprocesses < numberOfProcesses)
-	{
-		// Calc total wait time of all queued processes
-		queueTotalWaitTime = 0;
-		queueCount = 0;
-		runTime++;
-		for (int i = 0; i < numberOfProcesses; i++)
-		{
-			// If waiting, add to queueTotalWaitTime
-			if (p[i].arrivalTime <= runTime && p[i].completed != 1)
-			{
-				if (i != currentprocess)
-				{
-					queueTotalWaitTime += p[i].waitTime+1;
-					queueCount++;
-				}
-			}
-		}
-		queueTotalWaitTime--;
-		runTime--;
-		if (queueCount != 0)
-		{ // If queue == 0, a prog is running with no queue
-
-			if (queueTotalWaitTime > p[currentprocess].remainingBurstTime && p[currentprocess].completed != 1 && timedelay < 1 && queueCount > 1)
-			{
-				// Store the interrupted process to ensure that it does not get run again.
-				previousprocess = currentprocess;
-				interrupt = true;
-				// If interrupt, set a delay for the program.
-				timedelay = queueTotalWaitTime;
-			}
-
-			// To reset response ratio for each iteration.
-			hrr = -9999;
-			int i = 0;
-			// To determine which process to run (HRRN)
-			if (interrupt || p[currentprocess].completed == 1)
-			{
-				for (i = 0; i < numberOfProcesses; i++)
-				{
-					// To skip the previous process if interrupt was triggered.
-					if (interrupt && i == previousprocess)
-					{
-						i++;
-					}
-
-					// Checking if process has arrived and is Incomplete
-					if (p[i].arrivalTime <= runTime && p[i].completed != 1)
-					{
-						// Calculating Response Ratio
-						temp = (float)(1 + p[i].remainingBurstTime + (runTime - p[i].arrivalTime)) / (float)p[i].remainingBurstTime;
-
-						// Checking for Highest Response Ratio
-						if (hrr < temp)
-						{
-							// Storing Response Ratio
-							hrr = temp;
-
-							// Storing Location
-							currentprocess = i;
-						}
-						else if (hrr == temp)
-						{
-							if (p[currentprocess].burstTime > p[i].remainingBurstTime)
-							{
-								currentprocess = i;
-							}
-						}
-					}
-				}
-			}
-		}
-		printf("%d",p[currentprocess].pid);
-
-		// Process to run has been selected. Increase wait time and turnaround time of all ready processes.
-		for (int i = 0; i < numberOfProcesses; i++)
-		{
-			if (p[i].arrivalTime <= runTime && p[i].completed != 1)
-			{
-				// Check if its not the current process
-				if (i != currentprocess)
-				{
-					p[i].waitTime++;
-					p[i].turnaroundTime++;
-				}
-			}
-		}
-		// To decrement the remaining burst time of current process and increase turnaround time.
-		p[currentprocess].remainingBurstTime--;
-		p[currentprocess].turnaroundTime++;
-
-		// If process has 0 remaining burst time, count as completed.
-		if (p[currentprocess].remainingBurstTime == 0)
-		{
-			p[currentprocess].completed = 1;
-			completedprocesses++;
-		}
-		// Increase the runtime by 1, reset interrupt boolean and decrement time delay.
-		interrupt = false;
-		timedelay--;
-		runTime++;
-	}
-
-	// Once all processes have been completed, calculate total and average waiting time and turnaround time.
-	for (int j = 0; j < numberOfProcesses; j++)
-	{
-		avgwaitTime += p[j].waitTime;
-		avgturnaroundTime += p[j].turnaroundTime;
-		if (p[j].waitTime > maxwaitTime)
-		{
-			maxwaitTime = p[j].waitTime;
-		}
-		if (p[j].turnaroundTime > maxturnaroundTime)
-		{
-			maxturnaroundTime = p[j].turnaroundTime;
-		}
-	}
-	
-	// Return results in an array.
-	resultarray[0] = avgwaitTime / numberOfProcesses;
-	resultarray[1] = maxwaitTime;
-	resultarray[2] = avgturnaroundTime / numberOfProcesses;
-	resultarray[3] = maxturnaroundTime;
-	return resultarray;
-}
-
 int main()
 {
 	int i, j, runTime = 0, sum_burstTime = 0;
 	char c;
-	float avgwaitTime = 0, avgturnaroundTime = 0, maxwaitTime = 0, maxturnaroundTime = 0;
+	float avgwaitTime = 0, avgturnaroundTime = 0, maxwaitTime = 0, maxturnaroundTime = 0, timedelay = 0;
 	bool interrupt;
 
 	// File reading to array here
@@ -254,9 +94,9 @@ int main()
 	int numberOfProcesses = processdata.processno;
 
 	// Initializing the structure variables
-	for (i = 0; i < numberOfProcesses; i++)
+	for (i = 0, c = 'A'; i < numberOfProcesses; i++, c++)
 	{
-		p[i].pid = i;
+		p[i].name = c;
 		p[i].arrivalTime = processdata.arrivaltimes[i];
 		p[i].burstTime = processdata.bursttimes[i];
 		p[i].remainingBurstTime = processdata.bursttimes[i];
@@ -300,12 +140,154 @@ int main()
 	// To track wt(running proc)/len(waiting procs) + bt(remaining)
 	double currentProcScore = 0;
 
-	float *resultarray;
-	resultarray = hrrnwithpreemption(p, processdata.processno);
+	// While loop to perform running of all processes.
+	while (completedprocesses < numberOfProcesses)
+	{
+		// Calc total wait time of all queued processes
+		queueTotalWaitTime = 0;
+		queueCount = 0;
+		runTime++;
+		for (int y = 0; y < numberOfProcesses; y++)
+		{
+			// If waiting, add to queueTotalWaitTime
+			if (p[y].arrivalTime <= runTime && p[y].completed != 1)
+			{
+				if (y != currentprocess)
+				{
+					queueTotalWaitTime += p[y].waitTime+1;
+					queueCount++;
+				}
+			}
+		}
+		// To account for the current process in queue
+		queueTotalWaitTime--;
+		runTime--;
 
-	printf("\nAverage waiting time:%f\n", resultarray[0]);
-	printf("Maximum waiting time:%f\n", resultarray[1]);
-	printf("Average Turn Around time:%f\n", resultarray[2]);
-	printf("Maximum Turn Around time:%f\n", resultarray[3]);
+		// This is debug code, leaving here in case need to check more shid
+		// printf("Currentprocess: %d\n", currentprocess);
+		// if (currentprocess >= 0){
+		// 	printf("ProcName: %c\n", p[currentprocess].name);
+		// 	printf("WT: %d\n", p[currentprocess].waitTime);
+		// 	printf("QueueCount: %d\n", queueCount);
+		// 	printf("BTLeft: %d\n", p[currentprocess].remainingBurstTime);
+		// }
+
+		// Do the actual check. If fail, process as usual
+		// If succeed and ready proc wt is more, which to swap to?
+		if (queueCount != 0)
+		{ // If queue == 0, a prog is running with no queue
+
+			if (queueTotalWaitTime > p[currentprocess].remainingBurstTime && p[currentprocess].completed != 1 && timedelay < 1)
+			{
+				previousprocess = currentprocess;
+				printf("interrupt:%d : %d\n", queueTotalWaitTime,p[currentprocess].remainingBurstTime);
+				interrupt = true;
+				// If interrupt, set a delay for the program.
+				timedelay = queueTotalWaitTime;
+			}
+
+			// currentProcScore = (p[currentprocess].waitTime / queueCount) + p[currentprocess].remainingBurstTime;
+			// if ((queueTotalWaitTime > currentProcScore) || p[currentprocess].completed == 1){
+			// swippity swappity to which one???
+			// This is probably supposed to go outside of the HRR
+
+			// To reset response ratio for each iteration.
+			hrr = -9999;
+			// To determine which process to run (HRRN)
+			if (interrupt || p[currentprocess].completed == 1)
+			{
+				for (i = 0; i < numberOfProcesses; i++)
+				{
+					// To skip the previous process if interrupt was triggered.
+					if (interrupt && i == previousprocess)
+					{
+						i++;
+						continue;
+					}
+
+					// Checking if process has arrived and is Incomplete
+					if (p[i].arrivalTime <= runTime && p[i].completed != 1)
+					{
+						// Calculating Response Ratio
+						// temp = (float)(p[i].burstTime + (runTime - p[i].arrivalTime)) / (float)p[i].burstTime;
+						temp = (float)(1+ p[i].remainingBurstTime + (runTime - p[i].arrivalTime)) / (float)p[i].remainingBurstTime;
+
+						// Checking for Highest Response Ratio
+						if (hrr < temp)
+						{
+							// Storing Response Ratio
+							hrr = temp;
+
+							// Storing Location
+							currentprocess = i;
+						}
+						else if (hrr == temp)
+						{
+							// if (p[currentprocess].burstTime > p[i].burstTime)
+							if (p[currentprocess].burstTime > p[i].remainingBurstTime)
+							{
+								currentprocess = i;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Process to run has been selected. Increase wait time and turnaround time of all ready processes.
+		printf("%c",p[currentprocess].name);
+		for (j = 0; j < numberOfProcesses; j++)
+		{
+			if (p[j].arrivalTime <= runTime && p[j].completed != 1)
+			{
+				// Check if its not the current process
+				if (j != currentprocess)
+				{
+					p[j].waitTime++;
+					p[j].turnaroundTime++;
+				}
+			}
+		}
+		// To decrement the remaining burst time of current process and increase turnaround time.
+		p[currentprocess].remainingBurstTime--;
+		p[currentprocess].turnaroundTime++;
+
+		// If process has 0 remaining burst time, count as completed.
+		if (p[currentprocess].remainingBurstTime == 0)
+		{
+			p[currentprocess].completed = 1;
+			completedprocesses++;
+		}
+		// Increase the runtime by 1, decrease the delay by one.
+		interrupt = false;
+		timedelay--;
+		runTime++;
+	}
+
+	// Print statement logic
+	printf("\nName\tArrival Time\tBurst Time\tWaiting Time");
+	printf("\tTurnAround Time");
+
+	for (j = 0; j < numberOfProcesses; j++)
+	{
+		avgwaitTime += p[j].waitTime;
+		avgturnaroundTime += p[j].turnaroundTime;
+		printf("\n%c\t\t%d\t\t", p[j].name, p[j].arrivalTime);
+		printf("%d\t\t%d\t\t", p[j].burstTime, p[j].waitTime);
+		printf("%d", p[j].turnaroundTime);
+		if (p[j].waitTime > maxwaitTime)
+		{
+			maxwaitTime = p[j].waitTime;
+		}
+		if (p[j].turnaroundTime > maxturnaroundTime)
+		{
+			maxturnaroundTime = p[j].turnaroundTime;
+		}
+	}
+
+	printf("\nAverage waiting time:%f\n", avgwaitTime / numberOfProcesses);
+	printf("Maximum waiting time:%f\n", maxwaitTime);
+	printf("Average Turn Around time:%f\n", avgturnaroundTime / numberOfProcesses);
+	printf("Maximum Turn Around time:%f\n", maxturnaroundTime);
 	return 0;
 }
