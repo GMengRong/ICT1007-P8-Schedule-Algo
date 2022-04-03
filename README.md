@@ -5,7 +5,7 @@
 ```git clone https://github.com/Xynorimas/ICT1007-P8-Schedule-Algo```
 2. Create testcases in text file and put in the "code" folder <br>
 ![image](https://user-images.githubusercontent.com/23615745/161418712-4948c710-1421-415a-8f69-5d0cb753c029.png)
-3. Compile and run "hrrnwithpreemptionWeighted.c" and select the testcase to be tested<br>
+3. Compile and run "assignment.c" and select the testcase to be tested<br>
 ![image](https://user-images.githubusercontent.com/23615745/161418844-c69e4351-73dd-4544-a230-de439fcc4850.png)
 
 ## How to use the algorithm tester to compare the schedulers:
